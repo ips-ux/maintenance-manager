@@ -7,14 +7,25 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Your web app's Firebase configuration
+// IMPORTANT: These values are loaded from environment variables
+// Create a .env file in the project root with your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBwWDkOyZ2UTPcK6M5PnigvyTwaVArSeL8",
-  authDomain: "maintenance-manager-ae292.firebaseapp.com",
-  projectId: "maintenance-manager-ae292",
-  storageBucket: "maintenance-manager-ae292.firebasestorage.app",
-  messagingSenderId: "112715689411",
-  appId: "1:112715689411:web:a8fbec735d776fe00aa176"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
+
+// Validate that all required environment variables are present
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error(
+    'Missing Firebase configuration. Please check your .env file.\n' +
+    'Required variables: VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc.\n' +
+    'See .env.example for reference.'
+  );
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
