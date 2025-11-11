@@ -37,21 +37,6 @@ function calculateDaysVacant(vacantSince) {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Prepare unit data with computed fields
- */
-function prepareUnitData(unitData) {
-  const daysVacant = unitData.isVacant && unitData.vacantSince
-    ? calculateDaysVacant(unitData.vacantSince)
-    : 0;
-
-  return {
-    ...unitData,
-    daysVacant,
-    updatedAt: Timestamp.now()
-  };
-}
-
 // ============================================================================
 // CREATE OPERATIONS
 // ============================================================================

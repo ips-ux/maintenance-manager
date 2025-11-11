@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { User, Bell, Lock, Building2, Users, Package, Settings as SettingsIcon, ChevronDown } from 'lucide-react';
+import { User, Bell, Lock, Building2, Users, Package, Settings as SettingsIcon, ChevronDown, Database, AlertCircle, CheckCircle } from 'lucide-react';
+import { seedDatabase, quickSeed } from '../utils/seedDatabase';
+import { testFirebaseConnection } from '../utils/testFirebaseConnection';
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -266,6 +268,47 @@ function ProductSettings() {
 
 // IPS Settings Component
 function IPSSettings() {
+  const [seedingStatus, setSeedingStatus] = useState(null);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    setConnectionStatus(null);
+    try {
+      const result = await testFirebaseConnection();
+      setConnectionStatus(result);
+    } catch (error) {
+      setConnectionStatus({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const handleSeedDatabase = async () => {
+    if (!confirm('This will create sample data in your Firebase database. Continue?')) {
+      return;
+    }
+
+    setSeeding(true);
+    setSeedingStatus(null);
+    try {
+      const result = await quickSeed();
+      setSeedingStatus(result);
+    } catch (error) {
+      setSeedingStatus({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-2">
@@ -273,8 +316,128 @@ function IPSSettings() {
         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">Admin Only</span>
       </div>
       <p className="text-gray-600 mb-6">Global application settings and preferences</p>
-      
+
       <div className="space-y-6">
+        {/* Developer Tools Section */}
+        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+          <div className="flex items-center gap-2 mb-4">
+            <Database className="w-5 h-5 text-gray-700" />
+            <h3 className="text-lg font-semibold text-gray-900">Developer Tools</h3>
+          </div>
+
+          <div className="space-y-4">
+            {/* Test Firebase Connection */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-900 mb-2">Test Firebase Connection</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Verify that the application can connect to Firebase and check if data exists in collections.
+              </p>
+              <button
+                onClick={handleTestConnection}
+                disabled={testingConnection}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+              >
+                {testingConnection ? 'Testing...' : 'Test Connection'}
+              </button>
+
+              {connectionStatus && (
+                <div className={`mt-4 p-4 rounded-lg ${connectionStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-start gap-2">
+                    {connectionStatus.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <h5 className={`font-semibold ${connectionStatus.success ? 'text-green-900' : 'text-red-900'}`}>
+                        {connectionStatus.success ? 'Connection Successful' : 'Connection Failed'}
+                      </h5>
+                      {connectionStatus.data && (
+                        <div className="mt-2 text-sm">
+                          <p className={`font-medium ${connectionStatus.data.overallStatus === 'success' ? 'text-green-800' : 'text-yellow-800'}`}>
+                            Status: {connectionStatus.data.overallStatus === 'success' ? 'Connected with data' : connectionStatus.data.overallStatus === 'no-data' ? 'Connected but no data found' : 'Error'}
+                          </p>
+                          <div className="mt-2 space-y-1">
+                            {Object.entries(connectionStatus.data.collections).map(([name, info]) => (
+                              <div key={name} className="flex items-center gap-2 text-xs">
+                                <span className="font-mono text-gray-700">{name}:</span>
+                                <span className={info.count > 0 ? 'text-green-700' : 'text-gray-500'}>
+                                  {info.count > 0 ? `${info.count} document(s)` : 'No data'}
+                                </span>
+                                {info.error && <span className="text-red-600">({info.error})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {connectionStatus.error && (
+                        <p className="mt-2 text-sm text-red-700">{connectionStatus.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Seed Database */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-900 mb-2">Seed Database with Test Data</h4>
+              <p className="text-sm text-gray-600 mb-3">
+                Populate Firebase with sample units, turns, vendors, calendar events, and activities.
+                This is useful for testing and development.
+              </p>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Warning:</strong> This will create real documents in your Firebase database.
+                  Only use this in development environments.
+                </p>
+              </div>
+              <button
+                onClick={handleSeedDatabase}
+                disabled={seeding}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+              >
+                {seeding ? 'Seeding Database...' : 'Seed Database'}
+              </button>
+
+              {seedingStatus && (
+                <div className={`mt-4 p-4 rounded-lg ${seedingStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-start gap-2">
+                    {seedingStatus.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <h5 className={`font-semibold ${seedingStatus.success ? 'text-green-900' : 'text-red-900'}`}>
+                        {seedingStatus.success ? 'Database Seeded Successfully!' : 'Seeding Failed'}
+                      </h5>
+                      {seedingStatus.results && (
+                        <div className="mt-2 space-y-1 text-sm text-green-800">
+                          <p>Units: {seedingStatus.results.units.created} created</p>
+                          <p>Vendors: {seedingStatus.results.vendors.created} created</p>
+                          <p>Technicians: {seedingStatus.results.technicians.created} created</p>
+                          <p>Turns: {seedingStatus.results.turns.created} created</p>
+                          <p>Calendar Events: {seedingStatus.results.calendar.created} created</p>
+                          <p>Activities: {seedingStatus.results.activities.created} created</p>
+                        </div>
+                      )}
+                      {seedingStatus.error && (
+                        <p className="mt-2 text-sm text-red-700">{seedingStatus.error}</p>
+                      )}
+                      {seedingStatus.success && (
+                        <p className="mt-3 text-sm text-green-700 font-medium">
+                          You can now go to the Dashboard to see the data!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">🚧 Under Construction</h3>
           <p className="text-blue-700">
@@ -282,7 +445,7 @@ function IPSSettings() {
             branding, integrations, and system preferences.
           </p>
         </div>
-        
+
         <SettingSection title="Property Information" />
         <SettingSection title="Branding & Appearance" />
         <SettingSection title="Integrations" />

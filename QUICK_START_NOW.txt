@@ -1,0 +1,56 @@
+========================================
+  QUICK START - Create Your Profile NOW
+========================================
+
+CIRCULAR DEPENDENCY HAS BEEN FIXED!
+You can now create your user profile.
+
+--------------------------------------
+STEP 1: Start Dev Server
+--------------------------------------
+Open terminal in project folder and run:
+
+    npm run dev
+
+Wait for server to start...
+
+--------------------------------------
+STEP 2: Open Setup Page
+--------------------------------------
+Open your browser and go to:
+
+    http://localhost:5173/setup-admin.html
+
+--------------------------------------
+STEP 3: Create Profile
+--------------------------------------
+Click the button:
+
+    "Create Admin User Profile"
+
+Wait for green success message.
+
+--------------------------------------
+STEP 4: Sign In
+--------------------------------------
+Go to login page:
+
+    http://localhost:5173
+
+Enter credentials:
+    Email: robert.barron@greystar.com
+    Password: ToRememberFor1?
+
+Click "Sign In"
+
+--------------------------------------
+DONE!
+--------------------------------------
+You should now see the dashboard with
+your email in the header.
+
+======================================
+For more details, see:
+  - CIRCULAR_DEPENDENCY_FIX.md
+  - AUTHENTICATION_SETUP.md
+======================================

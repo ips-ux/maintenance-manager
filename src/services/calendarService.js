@@ -20,7 +20,7 @@ import {
 import { db } from '../lib/firebase';
 import { logActivity } from './activityService';
 
-const CALENDAR_COLLECTION = 'calendar';
+const CALENDAR_COLLECTION = 'calendarEvents';
 
 // ============================================================================
 // CREATE OPERATIONS

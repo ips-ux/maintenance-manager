@@ -282,6 +282,7 @@ function generateTechnicians() {
 
 /**
  * Generate sample turns for vacant units
+ * NOTE: This function now expects units with real Firebase IDs
  */
 function generateTurns(units, technicians) {
   const turns = [];
@@ -455,9 +456,12 @@ function generateTurns(units, technicians) {
       }
     ];
 
+    // CRITICAL FIX: Use the real Firebase document ID from the unit
     turns.push({
-      unitId: `unit-${unit.unitNumber}`,
+      unitId: unit.id, // Now using the actual Firebase document ID
       unitNumber: unit.unitNumber,
+      bedrooms: unit.bedrooms, // Added for dashboard display
+      bathrooms: unit.bathrooms, // Added for dashboard display
       status: 'In Progress',
       startDate: Timestamp.fromDate(new Date(Date.now() - daysInProgress * 24 * 60 * 60 * 1000)),
       targetCompletionDate: Timestamp.fromDate(new Date(Date.now() + (targetDays - daysInProgress) * 24 * 60 * 60 * 1000)),
@@ -476,104 +480,134 @@ function generateTurns(units, technicians) {
 
 /**
  * Generate sample calendar events
+ * NOTE: This function now expects units and vendors with real Firebase IDs
  */
 function generateCalendarEvents(units, vendors, technicians) {
   const events = [];
+
+  // Helper function to find unit by unit number
+  const findUnitByNumber = (unitNumber) => {
+    return units.find(u => u.unitNumber === unitNumber);
+  };
+
+  // Helper function to find vendor by name
+  const findVendorByName = (vendorName) => {
+    return vendors.find(v => v.vendorName === vendorName);
+  };
+
+  // Get reference units for events
+  const unit204 = findUnitByNumber('204');
+  const unit105 = findUnitByNumber('105');
+  const unit402 = findUnitByNumber('402');
+
+  // Get reference vendors
+  const cleanProVendor = findVendorByName('CleanPro Services');
+  const coolAirVendor = findVendorByName('CoolAir HVAC');
+
   const today = new Date();
 
-  // Carpet cleaning event (today)
-  events.push({
-    title: 'Carpet Cleaning - Unit 204',
-    description: 'Deep carpet cleaning for all rooms',
-    eventType: 'Vendor Visit',
-    startDateTime: Timestamp.fromDate(new Date(today.setHours(14, 0, 0, 0))),
-    endDateTime: Timestamp.fromDate(new Date(today.setHours(16, 0, 0, 0))),
-    allDay: false,
-    unitId: 'unit-204',
-    unitNumber: '204',
-    turnId: null,
-    vendorId: 'vendor-cleanpro',
-    vendorName: 'CleanPro Services',
-    assignedTo: technicians[2].uid,
-    assignedToName: technicians[2].displayName,
-    status: 'Scheduled',
-    completedAt: null,
-    cancelledReason: null,
-    notes: 'Use eco-friendly products',
-    reminderSent: false
-  });
+  // Only create event if unit exists
+  if (unit204 && cleanProVendor) {
+    // Carpet cleaning event (today)
+    events.push({
+      title: `Carpet Cleaning - Unit ${unit204.unitNumber}`,
+      description: 'Deep carpet cleaning for all rooms',
+      eventType: 'Vendor Visit',
+      startDateTime: Timestamp.fromDate(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0, 0, 0)),
+      endDateTime: Timestamp.fromDate(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0, 0, 0)),
+      allDay: false,
+      unitId: unit204.id, // CRITICAL FIX: Use real Firebase ID
+      unitNumber: unit204.unitNumber,
+      turnId: null,
+      vendorId: cleanProVendor.id, // CRITICAL FIX: Use real Firebase ID
+      vendorName: cleanProVendor.vendorName,
+      assignedTo: technicians[2].uid,
+      assignedToName: technicians[2].displayName,
+      status: 'Scheduled',
+      completedAt: null,
+      cancelledReason: null,
+      notes: 'Use eco-friendly products',
+      reminderSent: false
+    });
+  }
 
   // Final inspection (tomorrow)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  events.push({
-    title: 'Final Inspection - Unit 105',
-    description: 'Final walkthrough before ready status',
-    eventType: 'Inspection',
-    startDateTime: Timestamp.fromDate(new Date(tomorrow.setHours(10, 0, 0, 0))),
-    endDateTime: Timestamp.fromDate(new Date(tomorrow.setHours(11, 0, 0, 0))),
-    allDay: false,
-    unitId: 'unit-105',
-    unitNumber: '105',
-    turnId: null,
-    vendorId: null,
-    vendorName: null,
-    assignedTo: technicians[1].uid,
-    assignedToName: technicians[1].displayName,
-    status: 'Scheduled',
-    completedAt: null,
-    cancelledReason: null,
-    notes: '',
-    reminderSent: false
-  });
+  if (unit105) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    events.push({
+      title: `Final Inspection - Unit ${unit105.unitNumber}`,
+      description: 'Final walkthrough before ready status',
+      eventType: 'Inspection',
+      startDateTime: Timestamp.fromDate(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 10, 0, 0, 0)),
+      endDateTime: Timestamp.fromDate(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 11, 0, 0, 0)),
+      allDay: false,
+      unitId: unit105.id, // CRITICAL FIX: Use real Firebase ID
+      unitNumber: unit105.unitNumber,
+      turnId: null,
+      vendorId: null,
+      vendorName: null,
+      assignedTo: technicians[1].uid,
+      assignedToName: technicians[1].displayName,
+      status: 'Scheduled',
+      completedAt: null,
+      cancelledReason: null,
+      notes: '',
+      reminderSent: false
+    });
+  }
 
   // Move-in (2 days out)
-  const dayAfterTomorrow = new Date();
-  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-  events.push({
-    title: 'Move-in - Unit 204',
-    description: 'New tenant move-in',
-    eventType: 'Move-in',
-    startDateTime: Timestamp.fromDate(new Date(dayAfterTomorrow.setHours(13, 0, 0, 0))),
-    endDateTime: Timestamp.fromDate(new Date(dayAfterTomorrow.setHours(14, 0, 0, 0))),
-    allDay: false,
-    unitId: 'unit-204',
-    unitNumber: '204',
-    turnId: null,
-    vendorId: null,
-    vendorName: null,
-    assignedTo: technicians[0].uid,
-    assignedToName: technicians[0].displayName,
-    status: 'Scheduled',
-    completedAt: null,
-    cancelledReason: null,
-    notes: 'Keys ready in office',
-    reminderSent: false
-  });
+  if (unit204) {
+    const dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    events.push({
+      title: `Move-in - Unit ${unit204.unitNumber}`,
+      description: 'New tenant move-in',
+      eventType: 'Move-in',
+      startDateTime: Timestamp.fromDate(new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate(), 13, 0, 0, 0)),
+      endDateTime: Timestamp.fromDate(new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate(), 14, 0, 0, 0)),
+      allDay: false,
+      unitId: unit204.id, // CRITICAL FIX: Use real Firebase ID
+      unitNumber: unit204.unitNumber,
+      turnId: null,
+      vendorId: null,
+      vendorName: null,
+      assignedTo: technicians[0].uid,
+      assignedToName: technicians[0].displayName,
+      status: 'Scheduled',
+      completedAt: null,
+      cancelledReason: null,
+      notes: 'Keys ready in office',
+      reminderSent: false
+    });
+  }
 
   // HVAC service (3 days out)
-  const threeDaysOut = new Date();
-  threeDaysOut.setDate(threeDaysOut.getDate() + 3);
-  events.push({
-    title: 'HVAC Service - Unit 402',
-    description: 'Quarterly HVAC maintenance',
-    eventType: 'Vendor Visit',
-    startDateTime: Timestamp.fromDate(new Date(threeDaysOut.setHours(9, 0, 0, 0))),
-    endDateTime: Timestamp.fromDate(new Date(threeDaysOut.setHours(11, 0, 0, 0))),
-    allDay: false,
-    unitId: 'unit-402',
-    unitNumber: '402',
-    turnId: null,
-    vendorId: 'vendor-coolair',
-    vendorName: 'CoolAir HVAC',
-    assignedTo: technicians[2].uid,
-    assignedToName: technicians[2].displayName,
-    status: 'Scheduled',
-    completedAt: null,
-    cancelledReason: null,
-    notes: '',
-    reminderSent: false
-  });
+  if (unit402 && coolAirVendor) {
+    const threeDaysOut = new Date();
+    threeDaysOut.setDate(threeDaysOut.getDate() + 3);
+    events.push({
+      title: `HVAC Service - Unit ${unit402.unitNumber}`,
+      description: 'Quarterly HVAC maintenance',
+      eventType: 'Vendor Visit',
+      startDateTime: Timestamp.fromDate(new Date(threeDaysOut.getFullYear(), threeDaysOut.getMonth(), threeDaysOut.getDate(), 9, 0, 0, 0)),
+      endDateTime: Timestamp.fromDate(new Date(threeDaysOut.getFullYear(), threeDaysOut.getMonth(), threeDaysOut.getDate(), 11, 0, 0, 0)),
+      allDay: false,
+      unitId: unit402.id, // CRITICAL FIX: Use real Firebase ID
+      unitNumber: unit402.unitNumber,
+      turnId: null,
+      vendorId: coolAirVendor.id, // CRITICAL FIX: Use real Firebase ID
+      vendorName: coolAirVendor.vendorName,
+      assignedTo: technicians[2].uid,
+      assignedToName: technicians[2].displayName,
+      status: 'Scheduled',
+      completedAt: null,
+      cancelledReason: null,
+      notes: '',
+      reminderSent: false
+    });
+  }
 
   return events;
 }
@@ -582,7 +616,6 @@ function generateCalendarEvents(units, vendors, technicians) {
  * Generate sample activity log entries
  */
 function generateActivities(technicians) {
-  const activities = [];
   const now = Date.now();
 
   const sampleActivities = [

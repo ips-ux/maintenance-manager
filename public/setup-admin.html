@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin User Setup - Maintenance Manager</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #1a202c;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #f7fafc;
+      border-left: 4px solid #4299e1;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #2d3748;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .info-box p {
+      color: #4a5568;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .credentials {
+      background: #edf2f7;
+      padding: 16px;
+      border-radius: 6px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .credentials div {
+      margin: 8px 0;
+    }
+
+    .credentials strong {
+      color: #2d3748;
+    }
+
+    .button {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 20px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      background: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+      display: block;
+    }
+
+    .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+      display: block;
+    }
+
+    .status.loading {
+      background: #bee3f8;
+      color: #2c5282;
+      border: 1px solid #90cdf4;
+      display: block;
+    }
+
+    .steps {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .steps h3 {
+      color: #2d3748;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .steps ol {
+      margin-left: 20px;
+    }
+
+    .steps li {
+      color: #4a5568;
+      margin: 12px 0;
+      line-height: 1.6;
+    }
+
+    .warning {
+      background: #fef5e7;
+      border-left: 4px solid #f39c12;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .warning p {
+      color: #795548;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Admin User Setup</h1>
+    <p class="subtitle">Maintenance Manager - Authentication Configuration</p>
+
+    <div class="info-box">
+      <h3>What This Does</h3>
+      <p>
+        This utility creates an admin user profile in your Firestore USERS collection.
+        Your Firebase Authentication account already exists, but it needs a corresponding
+        user profile to access the application.
+      </p>
+    </div>
+
+    <div class="credentials">
+      <div><strong>Email:</strong> robert.barron@greystar.com</div>
+      <div><strong>Password:</strong> ToRememberFor1?</div>
+      <div><strong>UID:</strong> GO4odyiO3OTNmUvAknUl0KkFh563</div>
+      <div><strong>Role:</strong> Admin</div>
+    </div>
+
+    <div class="warning">
+      <p>
+        <strong>Note:</strong> This is a one-time setup. After creating the user profile,
+        you can sign in normally with your email and password.
+      </p>
+    </div>
+
+    <button id="createBtn" class="button">Create Admin User Profile</button>
+    <button id="verifyBtn" class="button" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); margin-top: 10px;">
+      Verify User Exists
+    </button>
+
+    <div id="status" class="status"></div>
+
+    <div class="steps">
+      <h3>Next Steps After Setup</h3>
+      <ol>
+        <li>Click "Create Admin User Profile" above to create your user document</li>
+        <li>Wait for the success message</li>
+        <li>Navigate to your application's login page</li>
+        <li>Sign in with the credentials shown above</li>
+        <li>You should see your email in the header (not "dev@maintenance.com")</li>
+      </ol>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createAdminUser, verifyAdminUser } from './src/utils/createAdminUser.js';
+
+    const createBtn = document.getElementById('createBtn');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const status = document.getElementById('status');
+
+    function showStatus(message, type) {
+      status.className = `status ${type}`;
+      status.textContent = message;
+    }
+
+    createBtn.addEventListener('click', async () => {
+      createBtn.disabled = true;
+      verifyBtn.disabled = true;
+      showStatus('Creating admin user profile...', 'loading');
+
+      try {
+        const result = await createAdminUser();
+
+        if (result.success) {
+          showStatus(
+            '✅ Success! Admin user profile created. You can now sign in with your credentials.',
+            'success'
+          );
+          createBtn.textContent = 'User Profile Created ✓';
+        } else {
+          showStatus(
+            `❌ Error: ${result.error}. Check the browser console for details.`,
+            'error'
+          );
+          createBtn.disabled = false;
+          verifyBtn.disabled = false;
+        }
+      } catch (error) {
+        showStatus(
+          `❌ Error: ${error.message}. Check the browser console for details.`,
+          'error'
+        );
+        createBtn.disabled = false;
+        verifyBtn.disabled = false;
+      }
+    });
+
+    verifyBtn.addEventListener('click', async () => {
+      verifyBtn.disabled = true;
+      createBtn.disabled = true;
+      showStatus('Checking if user profile exists...', 'loading');
+
+      try {
+        const result = await verifyAdminUser();
+
+        if (result.success) {
+          showStatus(
+            `✅ User profile exists!\nUID: ${result.data.uid}\nEmail: ${result.data.email}\nRole: ${result.data.role}\nActive: ${result.data.active}`,
+            'success'
+          );
+          verifyBtn.textContent = 'User Exists ✓';
+        } else {
+          showStatus(
+            '❌ User profile not found. Click "Create Admin User Profile" to create it.',
+            'error'
+          );
+          verifyBtn.disabled = false;
+          createBtn.disabled = false;
+        }
+      } catch (error) {
+        showStatus(
+          `❌ Error: ${error.message}. Check the browser console for details.`,
+          'error'
+        );
+        verifyBtn.disabled = false;
+        createBtn.disabled = false;
+      }
+    });
+
+    // Check status on page load
+    window.addEventListener('load', async () => {
+      showStatus('Ready to create admin user profile', 'loading');
+
+      try {
+        const result = await verifyAdminUser();
+        if (result.success) {
+          showStatus('✅ User profile already exists! You can sign in now.', 'success');
+          createBtn.textContent = 'User Already Exists ✓';
+          createBtn.disabled = true;
+          verifyBtn.textContent = 'User Verified ✓';
+        } else {
+          showStatus('Click "Create Admin User Profile" to get started', 'loading');
+        }
+      } catch (error) {
+        showStatus('Click "Create Admin User Profile" to get started', 'loading');
+      }
+    });
+  </script>
+</body>
+</html>

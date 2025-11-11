@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-const ACTIVITY_COLLECTION = 'activity';
+const ACTIVITY_COLLECTION = 'activities';
 
 // ============================================================================
 // CREATE OPERATIONS

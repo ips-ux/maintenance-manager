@@ -1,20 +1,101 @@
 import { Activity, Home, Wrench, Clock, Key, Calendar, ClipboardList, CheckCircle, TrendingUp, TrendingDown, AlertCircle, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useEffect, useState } from 'react';
+import { getUnitsStatistics, getVacantUnits } from '../services/unitsService';
+import { getActiveTurns } from '../services/turnsService';
+import { getUpcomingEvents } from '../services/calendarService';
+import { getRecentActivities, formatActivityForDisplay } from '../services/activityService';
+import { testFirebaseConnection } from '../utils/testFirebaseConnection';
 
 export default function Dashboard() {
-  const stats = {
-    totalUnits: 120,
-    vacantUnits: 8,
-    turnsInProgress: 3,
-    avgTurnTime: 5.2,
+  const [stats, setStats] = useState({
+    totalUnits: 0,
+    vacantUnits: 0,
+    turnsInProgress: 0,
+    avgTurnTime: 0,
     trends: {
       totalUnits: 0,
-      vacantUnits: -2,
-      turnsInProgress: 1,
-      avgTurnTime: -0.8,
+      vacantUnits: 0,
+      turnsInProgress: 0,
+      avgTurnTime: 0,
     }
-  };
+  });
+  const [activeTurns, setActiveTurns] = useState([]);
+  const [vacantUnits, setVacantUnits] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        console.log('Dashboard: Starting data fetch...');
+
+        // Test Firebase connection first
+        console.log('Dashboard: Testing Firebase connection...');
+        const connectionTest = await testFirebaseConnection();
+        console.log('Dashboard: Connection test result:', connectionTest);
+
+        const statsResult = await getUnitsStatistics();
+        console.log('Dashboard: Units statistics result:', statsResult);
+
+        const activeTurnsResult = await getActiveTurns();
+        console.log('Dashboard: Active turns result:', activeTurnsResult);
+
+        const vacantUnitsResult = await getVacantUnits();
+        console.log('Dashboard: Vacant units result:', vacantUnitsResult);
+
+        const upcomingEventsResult = await getUpcomingEvents();
+        console.log('Dashboard: Upcoming events result:', upcomingEventsResult);
+
+        const recentActivityResult = await getRecentActivities();
+        console.log('Dashboard: Recent activity result:', recentActivityResult);
+
+        // Check which service failed
+        if (!statsResult.success) {
+          throw new Error(`Units Statistics failed: ${statsResult.error} (${statsResult.errorCode})`);
+        }
+        if (!activeTurnsResult.success) {
+          throw new Error(`Active Turns failed: ${activeTurnsResult.error} (${activeTurnsResult.errorCode})`);
+        }
+        if (!vacantUnitsResult.success) {
+          throw new Error(`Vacant Units failed: ${vacantUnitsResult.error} (${vacantUnitsResult.errorCode})`);
+        }
+        if (!upcomingEventsResult.success) {
+          throw new Error(`Upcoming Events failed: ${upcomingEventsResult.error} (${upcomingEventsResult.errorCode})`);
+        }
+        if (!recentActivityResult.success) {
+          throw new Error(`Recent Activity failed: ${recentActivityResult.error} (${recentActivityResult.errorCode})`);
+        }
+
+        // All succeeded, update state
+        const unitStats = statsResult.data;
+        setStats(prevStats => ({
+          ...prevStats,
+          totalUnits: unitStats.totalUnits,
+          vacantUnits: unitStats.vacantUnits,
+          turnsInProgress: activeTurnsResult.data.length,
+          avgTurnTime: unitStats.avgDaysVacant,
+        }));
+        setActiveTurns(activeTurnsResult.data);
+        setVacantUnits(vacantUnitsResult.data);
+        setUpcomingEvents(upcomingEventsResult.data);
+        setRecentActivity(recentActivityResult.data);
+
+        console.log('Dashboard: All data fetched successfully!');
+      } catch (err) {
+        console.error('Dashboard: Error fetching data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
 
   // Mock data for turn performance chart
   const turnPerformanceData = [
@@ -23,39 +104,13 @@ export default function Dashboard() {
     { date: 'Week 3', days: 5.5 },
     { date: 'Week 4', days: 5.2 },
   ];
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-  // Mock active turns data
-  const activeTurns = [
-    { unit: '204', bedrooms: 2, bathrooms: 2, daysInProgress: 3, completedTasks: 7, totalTasks: 12, technician: 'John D.', targetDate: '2025-11-12', status: 'on-track' },
-    { unit: '105', bedrooms: 1, bathrooms: 1, daysInProgress: 6, completedTasks: 10, totalTasks: 10, technician: 'Sarah M.', targetDate: '2025-11-10', status: 'ready' },
-    { unit: '301', bedrooms: 3, bathrooms: 2, daysInProgress: 8, completedTasks: 4, totalTasks: 14, technician: 'Mike R.', targetDate: '2025-11-11', status: 'delayed' },
-  ];
-
-  // Mock vacant units data
-  const vacantUnits = [
-    { unit: '402', bedrooms: 2, bathrooms: 2, daysVacant: 2, status: 'ready', turnStarted: false },
-    { unit: '205', bedrooms: 1, bathrooms: 1, daysVacant: 5, status: 'in-progress', turnStarted: true },
-    { unit: '108', bedrooms: 2, bathrooms: 1, daysVacant: 1, status: 'blocked', turnStarted: false },
-    { unit: '315', bedrooms: 3, bathrooms: 2, daysVacant: 3, status: 'in-progress', turnStarted: true },
-    { unit: '209', bedrooms: 1, bathrooms: 1, daysVacant: 7, status: 'ready', turnStarted: false },
-  ];
-
-  // Mock schedule preview
-  const upcomingEvents = [
-    { date: 'Today', time: '2:00 PM', title: 'Carpet Cleaning - Unit 301', type: 'vendor' },
-    { date: 'Tomorrow', time: '10:00 AM', title: 'Final Inspection - Unit 105', type: 'inspection' },
-    { date: 'Nov 12', time: '1:00 PM', title: 'Move-in - Unit 204', type: 'move-in' },
-    { date: 'Nov 13', time: '9:00 AM', title: 'HVAC Service - Unit 402', type: 'vendor' },
-  ];
-
-  // Mock activity feed
-  const recentActivity = [
-    { action: 'Cleaning completed', unit: '204', user: 'John D.', time: '2 hours ago' },
-    { action: 'Keys returned', unit: '105', user: 'Sarah M.', time: 'Today at 9:30 AM' },
-    { action: 'Vendor scheduled', unit: '301', user: 'Mike R.', time: 'Today at 11:15 AM' },
-    { action: 'Paint touch-up completed', unit: '204', user: 'John D.', time: 'Yesterday at 3:45 PM' },
-    { action: 'Final walkthrough passed', unit: '105', user: 'Manager', time: 'Yesterday at 2:00 PM' },
-  ];
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 pb-12 space-y-6">
@@ -237,7 +292,6 @@ export default function Dashboard() {
 // Stat Card Component with Trends
 function StatCard({ title, value, icon, color, trend }) {
   const isPositive = trend > 0;
-  const isNegative = trend < 0;
   const isNeutral = trend === 0;
   
   return (
@@ -270,26 +324,35 @@ function TurnProgressCard({ turn }) {
   const progress = (turn.completedTasks / turn.totalTasks) * 100;
   
   const statusColors = {
+    'In Progress': 'bg-green-100 text-green-700 border-green-200',
+    'Completed': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Blocked': 'bg-red-100 text-red-700 border-red-200',
+    // Default for 'on-track', 'ready', 'delayed' if they still appear
     'on-track': 'bg-green-100 text-green-700 border-green-200',
     'ready': 'bg-blue-100 text-blue-700 border-blue-200',
     'delayed': 'bg-red-100 text-red-700 border-red-200',
   };
 
   const statusLabels = {
+    'In Progress': 'In Progress',
+    'Completed': 'Completed',
+    'Blocked': 'Blocked',
     'on-track': 'On Track',
     'ready': 'Ready',
     'delayed': 'Delayed',
   };
 
+  const currentStatus = turn.status || 'on-track';
+
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-gray-900">Unit {turn.unit}</h4>
+          <h4 className="font-semibold text-gray-900">Unit {turn.unitNumber}</h4>
           <p className="text-sm text-gray-600">{turn.bedrooms}BR / {turn.bathrooms}BA</p>
         </div>
-        <span className={`px-2 py-1 text-xs font-medium rounded border ${statusColors[turn.status]}`}>
-          {statusLabels[turn.status]}
+        <span className={`px-2 py-1 text-xs font-medium rounded border ${statusColors[currentStatus]}`}>
+          {statusLabels[currentStatus]}
         </span>
       </div>
       
@@ -311,7 +374,7 @@ function TurnProgressCard({ turn }) {
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-1 text-gray-600">
           <User className="w-4 h-4" />
-          <span>{turn.technician}</span>
+          <span>{turn.assignedTechnicianName}</span>
         </div>
         <div className="text-gray-600">
           <span className="font-medium">{turn.daysInProgress}</span> days
@@ -324,30 +387,34 @@ function TurnProgressCard({ turn }) {
 // Vacant Unit Card Component
 function VacantUnitCard({ unit }) {
   const statusColors = {
-    'ready': 'bg-green-100 text-green-700',
-    'in-progress': 'bg-amber-100 text-amber-700',
-    'blocked': 'bg-red-100 text-red-700',
+    'Ready': 'bg-green-100 text-green-700',
+    'In Progress': 'bg-amber-100 text-amber-700',
+    'Blocked': 'bg-red-100 text-red-700',
+    'Occupied': 'bg-gray-100 text-gray-700',
   };
 
   const statusLabels = {
-    'ready': 'Ready',
-    'in-progress': 'In Progress',
-    'blocked': 'Blocked',
+    'Ready': 'Ready',
+    'In Progress': 'In Progress',
+    'Blocked': 'Blocked',
+    'Occupied': 'Occupied',
   };
+
+  const currentStatus = unit.status || 'Ready';
 
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
       <div className="flex items-center gap-3">
         <div>
-          <p className="font-semibold text-gray-900">Unit {unit.unit}</p>
+          <p className="font-semibold text-gray-900">Unit {unit.unitNumber}</p>
           <p className="text-sm text-gray-600">{unit.bedrooms}BR / {unit.bathrooms}BA · {unit.daysVacant} days vacant</p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`px-2 py-1 text-xs font-medium rounded ${statusColors[unit.status]}`}>
-          {statusLabels[unit.status]}
+        <span className={`px-2 py-1 text-xs font-medium rounded ${statusColors[currentStatus]}`}>
+          {statusLabels[currentStatus]}
         </span>
-        {!unit.turnStarted && unit.status !== 'blocked' && (
+        {!unit.currentTurnId && unit.status !== 'Blocked' && (
           <button className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 transition-colors">
             Start Turn
           </button>
@@ -360,26 +427,36 @@ function VacantUnitCard({ unit }) {
 // Schedule Event Card Component
 function ScheduleEventCard({ event }) {
   const typeColors = {
-    'vendor': 'bg-purple-100 text-purple-700',
-    'inspection': 'bg-blue-100 text-blue-700',
-    'move-in': 'bg-green-100 text-green-700',
+    'Vendor': 'bg-purple-100 text-purple-700',
+    'Inspection': 'bg-blue-100 text-blue-700',
+    'Move-In': 'bg-green-100 text-green-700',
   };
 
   const typeIcons = {
-    'vendor': '🔧',
-    'inspection': '📋',
-    'move-in': '🔑',
+    'Vendor': '🔧',
+    'Inspection': '📋',
+    'Move-In': '🔑',
   };
+
+  const formatEventDate = (timestamp) => {
+    if (!timestamp) return { date: '', time: '' };
+    const d = timestamp.toDate();
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return { date, time };
+  }
+
+  const { date, time } = formatEventDate(event.startDateTime);
 
   return (
     <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-      <div className="text-2xl">{typeIcons[event.type]}</div>
+      <div className="text-2xl">{typeIcons[event.eventType]}</div>
       <div className="flex-1">
         <p className="font-medium text-gray-900">{event.title}</p>
-        <p className="text-sm text-gray-600">{event.date} at {event.time}</p>
+        <p className="text-sm text-gray-600">{date} at {time}</p>
       </div>
-      <span className={`px-2 py-1 text-xs font-medium rounded ${typeColors[event.type]}`}>
-        {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+      <span className={`px-2 py-1 text-xs font-medium rounded ${typeColors[event.eventType]}`}>
+        {event.eventType}
       </span>
     </div>
   );
@@ -387,15 +464,16 @@ function ScheduleEventCard({ event }) {
 
 // Activity Item Component
 function ActivityItem({ activity }) {
+  const { timeAgo } = formatActivityForDisplay(activity);
   return (
     <div className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
       <div className="w-2 h-2 bg-blue-600 rounded-full mt-2" />
       <div className="flex-1">
         <p className="text-sm text-gray-900">
-          <span className="font-medium">{activity.action}</span> in Unit {activity.unit}
+          <span className="font-medium">{activity.action}</span> in {activity.entityName}
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          {activity.user} · {activity.time}
+          {activity.userName} · {timeAgo}
         </p>
       </div>
     </div>

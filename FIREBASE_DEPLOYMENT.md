@@ -141,8 +141,8 @@ You should see the following collections:
 - `vendors` - 6 documents
 - `users` - 3 documents
 - `turns` - Multiple documents (for units "In Progress")
-- `calendar` - 4 event documents
-- `activity` - 5 activity log entries
+- `calendarEvents` - 4 event documents
+- `activities` - 5 activity log entries
 
 ### Check Rules Status
 Visit: https://console.firebase.google.com/project/maintenance-manager-ae292/firestore/rules
