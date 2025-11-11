@@ -198,7 +198,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {activeTurns.map((turn) => (
-                <TurnProgressCard key={turn.unit} turn={turn} />
+                <TurnProgressCard key={turn.id || turn.unitId} turn={turn} />
               ))}
             </div>
           </CardContent>

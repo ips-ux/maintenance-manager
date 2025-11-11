@@ -70,19 +70,26 @@ function calculateDaysOverdue(targetDate) {
 
 /**
  * Prepare turn data with computed fields
+ * @param {Object} turnData - Turn data
+ * @param {boolean} updateTimestamp - Whether to update the updatedAt field (default: false for reads)
  */
-function prepareTurnData(turnData) {
+function prepareTurnData(turnData, updateTimestamp = false) {
   const progress = calculateProgress(turnData.checklist || []);
   const daysInProgress = calculateDaysInProgress(turnData.startDate);
   const daysOverdue = calculateDaysOverdue(turnData.targetCompletionDate);
 
-  return {
+  const prepared = {
     ...turnData,
     ...progress,
     daysInProgress,
-    daysOverdue,
-    updatedAt: Timestamp.now()
+    daysOverdue
   };
+
+  if (updateTimestamp) {
+    prepared.updatedAt = Timestamp.now();
+  }
+
+  return prepared;
 }
 
 // ============================================================================
@@ -237,12 +244,26 @@ export async function getTurns(options = {}) {
  * @returns {Promise<Object>} Array of active turns
  */
 export async function getActiveTurns(limitCount = 10) {
-  return getTurns({
+  const result = await getTurns({
     status: 'In Progress',
     limitCount,
     orderByField: 'targetCompletionDate',
     orderDirection: 'asc'
   });
+
+  if (!result.success) {
+    return result;
+  }
+
+  // Add computed fields for each turn
+  const turnsWithComputedFields = result.data.map(turn => {
+    return prepareTurnData(turn);
+  });
+
+  return {
+    success: true,
+    data: turnsWithComputedFields
+  };
 }
 
 /**
@@ -577,7 +598,7 @@ export async function recalculateAllTurnProgress() {
 
     result.data.forEach((turn) => {
       const docRef = doc(db, TURNS_COLLECTION, turn.id);
-      const updates = prepareTurnData(turn);
+      const updates = prepareTurnData(turn, true); // Update timestamp for batch operation
       batch.update(docRef, updates);
       updateCount++;
     });

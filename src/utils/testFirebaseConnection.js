@@ -16,8 +16,8 @@ export async function testFirebaseConnection() {
     collections: {
       units: { exists: false, count: 0, error: null },
       turns: { exists: false, count: 0, error: null },
-      calendar: { exists: false, count: 0, error: null },
-      activity: { exists: false, count: 0, error: null },
+      calendarEvents: { exists: false, count: 0, error: null },
+      activities: { exists: false, count: 0, error: null },
       vendors: { exists: false, count: 0, error: null },
       users: { exists: false, count: 0, error: null }
     },
@@ -28,7 +28,7 @@ export async function testFirebaseConnection() {
     console.log('🔍 Testing Firebase connection...');
 
     // Test each collection
-    const collectionsToTest = ['units', 'turns', 'calendar', 'activity', 'vendors', 'users'];
+    const collectionsToTest = ['units', 'turns', 'calendarEvents', 'activities', 'vendors', 'users'];
 
     for (const collectionName of collectionsToTest) {
       try {
