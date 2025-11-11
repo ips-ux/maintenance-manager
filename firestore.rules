@@ -1,0 +1,296 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // HELPER FUNCTIONS
+    // =========================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Get user document from users collection
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Check if user has specific role
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    // Check if user is active
+    function isActiveUser() {
+      return isAuthenticated() && getUserData().active == true;
+    }
+
+    // Check if user is Admin or Manager
+    function isAdminOrManager() {
+      return isAuthenticated() && getUserData().role in ['Admin', 'Manager'];
+    }
+
+    // Check if user is Admin, Manager, or Technician
+    function canEditTurns() {
+      return isAuthenticated() && getUserData().role in ['Admin', 'Manager', 'Technician'];
+    }
+
+    // Check if user owns the document (for user-specific data)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Validate required fields exist
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Check if field is not changed (immutable field)
+    function fieldNotChanged(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field]);
+    }
+
+    // =========================================================================
+    // UNITS COLLECTION
+    // =========================================================================
+
+    match /units/{unitId} {
+      // Read: All authenticated active users can read units
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Create: Only Admin or Manager can create units
+      allow create: if isAdminOrManager() &&
+                       hasRequiredFields(['unitNumber', 'bedrooms', 'bathrooms',
+                                         'squareFootage', 'status', 'isVacant']) &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Update: Admin, Manager can update; Technicians can update limited fields
+      allow update: if isAuthenticated() && isActiveUser() && (
+        // Admin/Manager can update any field
+        isAdminOrManager() ||
+        // Technicians can only update status and currentTurnId
+        (hasRole('Technician') &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'currentTurnId', 'updatedAt']))
+      ) && request.resource.data.updatedAt == request.time;
+
+      // Delete: Only Admin can delete units
+      allow delete: if hasRole('Admin');
+    }
+
+    // =========================================================================
+    // TURNS COLLECTION
+    // =========================================================================
+
+    match /turns/{turnId} {
+      // Read: All authenticated active users can read turns
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Create: Admin, Manager, Technician can create turns
+      allow create: if canEditTurns() &&
+                       hasRequiredFields(['unitId', 'unitNumber', 'status', 'startDate',
+                                         'targetCompletionDate', 'assignedTechnicianId',
+                                         'assignedTechnicianName', 'checklist', 'priority']) &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Update: Admin, Manager can update any field;
+      //         Technicians can update if assigned to them
+      allow update: if isAuthenticated() && isActiveUser() && (
+        isAdminOrManager() ||
+        (hasRole('Technician') && resource.data.assignedTechnicianId == request.auth.uid)
+      ) && request.resource.data.updatedAt == request.time;
+
+      // Delete: Only Admin can delete turns
+      allow delete: if hasRole('Admin');
+
+      // Subcollection: Turn Activities
+      match /activities/{activityId} {
+        allow read: if isAuthenticated() && isActiveUser();
+        allow create: if canEditTurns() && request.resource.data.timestamp == request.time;
+        allow update, delete: if hasRole('Admin');
+      }
+    }
+
+    // =========================================================================
+    // CALENDAR COLLECTION
+    // =========================================================================
+
+    match /calendar/{eventId} {
+      // Read: All authenticated active users can read events
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Create: Admin, Manager, Technician can create events
+      allow create: if canEditTurns() &&
+                       hasRequiredFields(['title', 'eventType', 'startDateTime',
+                                         'endDateTime', 'status', 'createdBy']) &&
+                       request.resource.data.createdBy == request.auth.uid &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Update: Creator, Admin, Manager can update;
+      //         Assigned user can update limited fields
+      allow update: if isAuthenticated() && isActiveUser() && (
+        isAdminOrManager() ||
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.assignedTo == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'completedAt', 'notes', 'updatedAt']))
+      ) && request.resource.data.updatedAt == request.time &&
+           fieldNotChanged('createdBy') &&
+           fieldNotChanged('createdAt');
+
+      // Delete: Only Admin or event creator can delete
+      allow delete: if hasRole('Admin') || resource.data.createdBy == request.auth.uid;
+    }
+
+    // =========================================================================
+    // VENDORS COLLECTION
+    // =========================================================================
+
+    match /vendors/{vendorId} {
+      // Read: All authenticated active users can read vendors
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Create: Only Admin or Manager can create vendors
+      allow create: if isAdminOrManager() &&
+                       hasRequiredFields(['vendorName', 'category', 'contactName',
+                                         'phone', 'email', 'active']) &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Update: Admin or Manager can update
+      allow update: if isAdminOrManager() &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Delete: Only Admin can delete vendors
+      allow delete: if hasRole('Admin');
+    }
+
+    // =========================================================================
+    // USERS COLLECTION
+    // =========================================================================
+
+    match /users/{userId} {
+      // Read: Users can read their own profile; Admin/Manager can read all
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdminOrManager()
+      );
+
+      // Create: Only when userId matches auth.uid and during initial profile creation
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == userId &&
+                       hasRequiredFields(['uid', 'email', 'displayName', 'role',
+                                         'active', 'notificationSettings']) &&
+                       request.resource.data.uid == request.auth.uid &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time;
+
+      // Update: Users can update their own profile (limited fields);
+      //         Admin can update any user
+      allow update: if isAuthenticated() && (
+        // Users can update their own limited fields
+        (request.auth.uid == userId &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['displayName', 'phoneNumber', 'photoURL', 'bio',
+                    'notificationSettings', 'updatedAt']) &&
+         fieldNotChanged('uid') &&
+         fieldNotChanged('email') &&
+         fieldNotChanged('role') &&
+         fieldNotChanged('active') &&
+         fieldNotChanged('permissions')) ||
+        // Admin can update any field
+        hasRole('Admin')
+      ) && request.resource.data.updatedAt == request.time;
+
+      // Delete: Only Admin can delete user profiles
+      allow delete: if hasRole('Admin');
+    }
+
+    // =========================================================================
+    // ACTIVITY COLLECTION
+    // =========================================================================
+
+    match /activity/{activityId} {
+      // Read: All authenticated active users can read activity
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Create: Any authenticated active user can create activity
+      allow create: if isAuthenticated() && isActiveUser() &&
+                       hasRequiredFields(['userId', 'userName', 'userRole', 'action',
+                                         'actionType', 'entityType', 'entityId',
+                                         'entityName', 'timestamp']);
+
+      // Update: Not allowed (activity is immutable)
+      allow update: if false;
+
+      // Delete: Only Admin can delete activity (for maintenance)
+      allow delete: if hasRole('Admin');
+    }
+
+    // =========================================================================
+    // DEFAULT DENY
+    // =========================================================================
+
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// =============================================================================
+// FIREBASE STORAGE RULES (firestore.rules)
+// =============================================================================
+// Note: This section is for reference. Storage rules should be in storage.rules
+//
+// service firebase.storage {
+//   match /b/{bucket}/o {
+//
+//     // Helper functions
+//     function isAuthenticated() {
+//       return request.auth != null;
+//     }
+//
+//     function isImage() {
+//       return request.resource.contentType.matches('image/.*');
+//     }
+//
+//     function isUnder5MB() {
+//       return request.resource.size < 5 * 1024 * 1024;
+//     }
+//
+//     // Turn photos
+//     match /turns/{turnId}/{allPaths=**} {
+//       allow read: if isAuthenticated();
+//       allow write: if isAuthenticated() &&
+//                       isImage() &&
+//                       isUnder5MB();
+//     }
+//
+//     // User profile photos
+//     match /users/{userId}/{allPaths=**} {
+//       allow read: if isAuthenticated();
+//       allow write: if isAuthenticated() &&
+//                       request.auth.uid == userId &&
+//                       isImage() &&
+//                       isUnder5MB();
+//     }
+//
+//     // Unit photos
+//     match /units/{unitId}/{allPaths=**} {
+//       allow read: if isAuthenticated();
+//       allow write: if isAuthenticated() &&
+//                       isImage() &&
+//                       isUnder5MB();
+//     }
+//
+//     // Default deny
+//     match /{allPaths=**} {
+//       allow read, write: if false;
+//     }
+//   }
+// }

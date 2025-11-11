@@ -1,0 +1,140 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for IPS-UX Maintenance Manager
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // =========================================================================
+    // HELPER FUNCTIONS
+    // =========================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Check if file is under 5MB
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Check if file is under 10MB
+    function isUnder10MB() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Check if file is a PDF
+    function isPDF() {
+      return request.resource.contentType == 'application/pdf';
+    }
+
+    // Validate image metadata
+    function hasValidMetadata() {
+      return request.resource.metadata.keys().hasAll(['uploadedBy', 'uploadedAt', 'entityType', 'entityId']);
+    }
+
+    // =========================================================================
+    // TURN PHOTOS
+    // =========================================================================
+
+    // Path: turns/{turnId}/{category}/{filename}
+    match /turns/{turnId}/{category}/{filename} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+
+      // Authenticated users can upload images with proper metadata
+      allow create: if isAuthenticated() &&
+                       isImage() &&
+                       isUnder5MB() &&
+                       hasValidMetadata();
+
+      // Only uploader or admin can delete
+      allow delete: if isAuthenticated() &&
+                       (resource.metadata.uploadedBy == request.auth.uid ||
+                        request.auth.token.role == 'Admin');
+
+      // Prevent updates (delete and recreate instead)
+      allow update: if false;
+    }
+
+    // =========================================================================
+    // USER PROFILE PHOTOS
+    // =========================================================================
+
+    // Path: users/{userId}/profile.jpg
+    match /users/{userId}/{filename} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+
+      // User can upload their own profile photo
+      allow create, update: if isAuthenticated() &&
+                               request.auth.uid == userId &&
+                               isImage() &&
+                               isUnder5MB();
+
+      // User can delete their own profile photo
+      allow delete: if isAuthenticated() &&
+                       request.auth.uid == userId;
+    }
+
+    // =========================================================================
+    // UNIT PHOTOS
+    // =========================================================================
+
+    // Path: units/{unitId}/unit-photos/{filename}
+    match /units/{unitId}/unit-photos/{filename} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+
+      // Authenticated users can upload unit photos
+      allow create: if isAuthenticated() &&
+                       (isImage() || isPDF()) &&
+                       isUnder10MB();
+
+      // Admin or uploader can delete
+      allow delete: if isAuthenticated() &&
+                       (resource.metadata.uploadedBy == request.auth.uid ||
+                        request.auth.token.role == 'Admin');
+
+      // Prevent updates
+      allow update: if false;
+    }
+
+    // =========================================================================
+    // VENDOR DOCUMENTS
+    // =========================================================================
+
+    // Path: vendors/{vendorId}/documents/{filename}
+    match /vendors/{vendorId}/documents/{filename} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+
+      // Admin or Manager can upload vendor documents
+      allow create: if isAuthenticated() &&
+                       request.auth.token.role in ['Admin', 'Manager'] &&
+                       (isImage() || isPDF()) &&
+                       isUnder10MB();
+
+      // Admin can delete
+      allow delete: if isAuthenticated() &&
+                       request.auth.token.role == 'Admin';
+
+      // Prevent updates
+      allow update: if false;
+    }
+
+    // =========================================================================
+    // DEFAULT DENY
+    // =========================================================================
+
+    // Deny all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
